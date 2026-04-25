@@ -14,7 +14,8 @@ I hope you find it useful.
 - Replaces `write` and `edit` with `advisor_write` and `advisor_edit` that only target `PI_ADVISOR_NOTES.md`
 - Blocks destructive bash commands (file modification, package managers, git writes, privilege escalation, etc.)
 - Builds a minimal system prompt with only the sections the advisor needs
-- Shows "ADVISOR" in the status line
+- Starts in advisor mode and can toggle back to regular agent mode
+- Shows "ADVISOR" or "AGENT" in the status line
 
 ## Installation
 
@@ -40,16 +41,29 @@ pi -e git:github.com/john-marinelli/pi-advisor
 
 ## Usage
 
-Once loaded, the agent operates in advisor mode automatically:
+Once loaded, the agent starts in advisor mode automatically:
 
 1. Ask the agent to explore the codebase or answer questions
 2. The agent reads files and runs read-only commands
 3. When asked to, pi-advisor can document the conversation in `PI_ADVISOR_NOTES.md` in the current working directory
 
+Toggle modes with the `/advisor` command:
+
+```text
+/advisor          # Toggle between advisor and regular agent mode
+/advisor on       # Enable advisor mode
+/advisor off      # Restore regular agent mode
+/advisor status   # Show the current mode
+```
+
+Regular agent mode restores the normal system prompt and the normal tool set for the session. The selected mode is saved in the session, so resuming that session restores the last selected mode.
+
 ## Allowed vs Blocked
 
-| Action | Allowed |
-|--------|---------|
+These restrictions apply only while advisor mode is enabled:
+
+| Action | Allowed in advisor mode |
+|--------|-------------------------|
 | Read any file | Yes |
 | Run read-only bash commands | Yes |
 | Write to `PI_ADVISOR_NOTES.md` | Yes |
