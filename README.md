@@ -2,7 +2,7 @@
 
 A [pi-coding-agent](https://github.com/badlogic/pi-mono) extension that restricts the agent to read-only codebase exploration. The agent can only write to `PI_ADVISOR_NOTES.md`, acting as an advisor that explores, analyzes, and documents findings.
 
-I created this extension to use in personal projects where I often want to have full control over the codebase.
+I created this extension to use in personal projects where I often want to have full control over the codebase. It's not dissimilar to the plan mode available in other agents like opencode, with the exception of pi-advisor being geared toward explanation rather than preparing to execute code changes. 
 
 Full disclosure: this extension was created with GLM-5.1 using pi after providing a detailed specification.
 
