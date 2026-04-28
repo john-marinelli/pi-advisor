@@ -1,7 +1,7 @@
 {
-  "name": "pi-advisor",
+  "name": "subdude",
   "version": "0.1.0",
-  "description": "Advisor extension for pi-coding-agent — read-only exploration, write findings to PI_ADVISOR_NOTES.md",
+  "description": "Extension for pi-coding-agent that provides a subdued agent experience, with an advisor mode that includes read-only exploration, writing findings to SUBDUDE.md, and a edit-enabled mode that requires approvals before changes.",
   "keywords": [
     "pi-package"
   ],

@@ -1,5 +1,5 @@
 /**
- * Bash command classification used by pi-advisor.
+ * Bash command classification used by subdude.
  * Commands are considered read-only only if they match a safe pattern
  * and do not match any destructive pattern.
  */

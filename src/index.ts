@@ -19,10 +19,10 @@ const ADVISOR_TOOLS = [
 ];
 
 const ADVISOR_ONLY_TOOLS = new Set(["advisor_write", "advisor_edit"]);
-const MODE_ENTRY_TYPE = "pi-advisor-mode";
+const MODE_ENTRY_TYPE = "subdude-mode";
 
 type AdvisorMode = "advisor" | "agent";
-const APPROVAL_BLOCK_REASON = "Blocked by pi-advisor: approval required.";
+const APPROVAL_BLOCK_REASON = "Blocked by subdude: approval required.";
 
 /**
  * Build a minimal system prompt from systemPromptOptions,
@@ -33,18 +33,18 @@ function buildAdvisorPrompt(opts: BuildSystemPromptOptions): string {
   const parts: string[] = [];
 
   // Core advisor instructions
-  parts.push(`[PI ADVISOR - ADVISOR MODE]
+  parts.push(`[SUBDUDE - ADVISOR MODE]
 You are an advisor. You can only read and explore the codebase.
-You CANNOT modify any files except PI_ADVISOR_NOTES.md.
+You CANNOT modify any files except SUBDUDE.md.
 - Use read, bash, grep, find, ls to explore
 - Bash is restricted to read-only commands
-- Prefer responding directly to the user rather than writing to PI_ADVISOR_NOTES.md, unless asked to do so
+- Prefer responding directly to the user rather than writing to SUBDUDE.md, unless asked to do so
 - Use code in examples if appropriate when responding to the user
-- When asked to document findings in PI_ADVISOR_NOTES.md, be succinct and include code examples
+- When asked to document findings in SUBDUDE.md, be succinct and include code examples
 - Be concise while still explaining thoroughly
 - Using bash commands that will alter anything or executing python scripts is disallowed
-- Use advisor_write to create PI_ADVISOR_NOTES.md when asked to document findings
-- Use advisor_edit to update PI_ADVISOR_NOTES.md`);
+- Use advisor_write to create SUBDUDE.md when asked to document findings
+- Use advisor_edit to update SUBDUDE.md`);
 
   // Working directory
   parts.push(`Working directory: ${opts.cwd}`);
@@ -146,10 +146,10 @@ export default function(pi: ExtensionAPI) {
 
   function updateStatus(ctx: ExtensionContext): void {
     if (mode === "advisor") {
-      ctx.ui.setStatus("pi-advisor", ctx.ui.theme.fg("accent", "ADVISOR"));
+      ctx.ui.setStatus("subdude", ctx.ui.theme.fg("accent", "ADVISOR"));
       return;
     }
-    ctx.ui.setStatus("pi-advisor", ctx.ui.theme.fg("success", "AGENT"));
+    ctx.ui.setStatus("subdude", ctx.ui.theme.fg("success", "AGENT"));
   }
 
   function setMode(nextMode: AdvisorMode, ctx: ExtensionContext, persist = false): void {
@@ -185,7 +185,7 @@ export default function(pi: ExtensionAPI) {
   function notifyModeChange(nextMode: AdvisorMode, ctx: ExtensionContext): void {
     ctx.ui.notify(
       nextMode === "advisor"
-        ? "Advisor mode enabled. Tools are restricted to read-only exploration plus PI_ADVISOR_NOTES.md updates."
+        ? "Advisor mode enabled. Tools are restricted to read-only exploration plus SUBDUDE.md updates."
         : "Advisor mode disabled. Regular agent prompt and tools restored. Mutating bash commands plus all writes and edits now require approval.",
       "info",
     );
@@ -198,7 +198,7 @@ export default function(pi: ExtensionAPI) {
   }
 
   pi.registerCommand("advisor", {
-    description: "Toggle pi-advisor mode, or use /advisor on, /advisor off, /advisor status",
+    description: "Toggle subdude mode, or use /advisor on, /advisor off, /advisor status",
     handler: async (args, ctx) => {
       const nextMode = parseModeArgument(args);
       if (!nextMode) {
@@ -207,7 +207,7 @@ export default function(pi: ExtensionAPI) {
       }
 
       if (nextMode === "status") {
-        ctx.ui.notify(`pi-advisor is in ${mode === "advisor" ? "advisor" : "regular agent"} mode.`, "info");
+        ctx.ui.notify(`subdude is in ${mode === "advisor" ? "advisor" : "regular agent"} mode.`, "info");
         return;
       }
 
