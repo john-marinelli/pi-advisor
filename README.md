@@ -15,6 +15,7 @@ I hope you find it useful.
 - Blocks destructive bash commands (file modification, package managers, git writes, privilege escalation, etc.)
 - Builds a minimal system prompt with only the sections the advisor needs
 - Starts in advisor mode and can toggle back to regular agent mode
+- Requires approval in regular agent mode before any `write` or `edit`, and before any bash command that is not classified as read-only
 - Shows "ADVISOR" or "AGENT" in the status line
 
 ## Installation
@@ -58,6 +59,14 @@ Toggle modes with the `/advisor` command:
 
 Regular agent mode restores the normal system prompt and the normal tool set for the session. The selected mode is saved in the session, so resuming that session restores the last selected mode.
 
+While advisor mode is off, pi-advisor still adds a safety gate:
+
+- `write` always asks for approval
+- `edit` always asks for approval
+- `bash` asks for approval unless the command is classified as read-only
+
+In non-interactive modes where confirmation UI is unavailable, these mutating actions are blocked instead of running silently.
+
 ## Allowed vs Blocked
 
 These restrictions apply only while advisor mode is enabled:
@@ -70,6 +79,8 @@ These restrictions apply only while advisor mode is enabled:
 | Edit `PI_ADVISOR_NOTES.md` | Yes |
 | Write to any other file | No |
 | Run destructive bash commands | No |
+
+When advisor mode is disabled, normal tools are restored, but mutating operations still require approval first.
 
 ## Files
 

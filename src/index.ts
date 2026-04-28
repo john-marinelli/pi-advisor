@@ -4,7 +4,7 @@ import type {
   ExtensionAPI,
 } from "@mariozechner/pi-coding-agent";
 import { isToolCallEventType } from "@mariozechner/pi-coding-agent";
-import { isSafeCommand } from "./bash-guard.js";
+import { isSafeCommand, requiresApprovalForCommand } from "./bash-guard.js";
 import { advisorEditTool } from "./advisor-edit.js";
 import { advisorWriteTool } from "./advisor-write.js";
 
@@ -22,6 +22,7 @@ const ADVISOR_ONLY_TOOLS = new Set(["advisor_write", "advisor_edit"]);
 const MODE_ENTRY_TYPE = "pi-advisor-mode";
 
 type AdvisorMode = "advisor" | "agent";
+const APPROVAL_BLOCK_REASON = "Blocked by pi-advisor: approval required.";
 
 /**
  * Build a minimal system prompt from systemPromptOptions,
@@ -40,9 +41,10 @@ You CANNOT modify any files except PI_ADVISOR_NOTES.md.
 - Prefer responding directly to the user rather than writing to PI_ADVISOR_NOTES.md, unless asked to do so
 - Use code in examples if appropriate when responding to the user
 - When asked to document findings in PI_ADVISOR_NOTES.md, be succinct and include code examples
+- Be concise while still explaining thoroughly
+- Using bash commands that will alter anything or executing python scripts is disallowed
 - Use advisor_write to create PI_ADVISOR_NOTES.md when asked to document findings
-- Use advisor_edit to update PI_ADVISOR_NOTES.md
-Write your findings, analysis, and recommendations to PI_ADVISOR_NOTES.md.`);
+- Use advisor_edit to update PI_ADVISOR_NOTES.md`);
 
   // Working directory
   parts.push(`Working directory: ${opts.cwd}`);
@@ -93,7 +95,30 @@ Write your findings, analysis, and recommendations to PI_ADVISOR_NOTES.md.`);
   return parts.join("\n\n");
 }
 
-export default function (pi: ExtensionAPI) {
+function summarizeForApproval(text: string, maxLength = 800): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 13)}\n...[truncated]`;
+}
+
+async function confirmAction(
+  ctx: ExtensionContext,
+  title: string,
+  message: string,
+): Promise<{ block: true; reason: string } | undefined> {
+  if (!ctx.hasUI) {
+    return {
+      block: true,
+      reason: `${APPROVAL_BLOCK_REASON} No interactive UI is available to confirm the action.`,
+    };
+  }
+
+  const approved = await ctx.ui.confirm(title, message, { signal: ctx.signal });
+  if (approved) return undefined;
+
+  return { block: true, reason: APPROVAL_BLOCK_REASON };
+}
+
+export default function(pi: ExtensionAPI) {
   let mode: AdvisorMode = "advisor";
   let regularTools: string[] | undefined;
 
@@ -157,6 +182,21 @@ export default function (pi: ExtensionAPI) {
     return undefined;
   }
 
+  function notifyModeChange(nextMode: AdvisorMode, ctx: ExtensionContext): void {
+    ctx.ui.notify(
+      nextMode === "advisor"
+        ? "Advisor mode enabled. Tools are restricted to read-only exploration plus PI_ADVISOR_NOTES.md updates."
+        : "Advisor mode disabled. Regular agent prompt and tools restored. Mutating bash commands plus all writes and edits now require approval.",
+      "info",
+    );
+  }
+
+  function toggleMode(ctx: ExtensionContext): void {
+    const nextMode: AdvisorMode = mode === "advisor" ? "agent" : "advisor";
+    setMode(nextMode, ctx, true);
+    notifyModeChange(nextMode, ctx);
+  }
+
   pi.registerCommand("advisor", {
     description: "Toggle pi-advisor mode, or use /advisor on, /advisor off, /advisor status",
     handler: async (args, ctx) => {
@@ -172,34 +212,61 @@ export default function (pi: ExtensionAPI) {
       }
 
       setMode(nextMode, ctx, true);
-      ctx.ui.notify(
-        nextMode === "advisor"
-          ? "Advisor mode enabled. Tools are restricted to read-only exploration plus PI_ADVISOR_NOTES.md updates."
-          : "Advisor mode disabled. Regular agent prompt and tools restored.",
-        "info",
-      );
+      notifyModeChange(nextMode, ctx);
     },
   });
 
-  // Block built-in write/edit (safety net) and destructive bash commands
-  pi.on("tool_call", async (event) => {
-    if (mode !== "advisor") return;
+  pi.registerShortcut("shift+tab", {
+    description: "Toggle between advisor and regular agent mode",
+    handler: async (ctx) => toggleMode(ctx),
+  });
 
-    if (event.toolName === "write" || event.toolName === "edit") {
-      return {
-        block: true,
-        reason: "Advisor mode: use advisor_write or advisor_edit instead.",
-      };
-    }
-    if (event.toolName !== "bash") return;
-    if (isToolCallEventType("bash", event)) {
-      const command = event.input.command;
-      if (!isSafeCommand(command)) {
+  // Enforce strict read-only behavior in advisor mode and approval gates in agent mode.
+  pi.on("tool_call", async (event, ctx) => {
+    if (mode === "advisor") {
+      if (event.toolName === "write" || event.toolName === "edit") {
         return {
           block: true,
-          reason: `Advisor mode: command blocked. Only read-only commands are allowed.\nCommand: ${command}`,
+          reason: "Advisor mode: use advisor_write or advisor_edit instead.",
         };
       }
+
+      if (event.toolName !== "bash") return;
+      if (isToolCallEventType("bash", event)) {
+        const command = event.input.command;
+        if (!isSafeCommand(command)) {
+          return {
+            block: true,
+            reason: `Advisor mode: command blocked. Only read-only commands are allowed.\nCommand: ${command}`,
+          };
+        }
+      }
+      return;
+    }
+
+    if (isToolCallEventType("write", event)) {
+      return confirmAction(
+        ctx,
+        "Approve file write?",
+        `Allow overwrite/create for ${event.input.path}?\n\nThis write will replace the full file contents.`,
+      );
+    }
+
+    if (isToolCallEventType("edit", event)) {
+      const editCount = Array.isArray(event.input.edits) ? event.input.edits.length : 0;
+      return confirmAction(
+        ctx,
+        "Approve file edit?",
+        `Allow ${editCount} edit${editCount === 1 ? "" : "s"} to ${event.input.path}?`,
+      );
+    }
+
+    if (isToolCallEventType("bash", event) && requiresApprovalForCommand(event.input.command)) {
+      return confirmAction(
+        ctx,
+        "Approve bash command?",
+        `This bash command is not classified as read-only:\n\n${summarizeForApproval(event.input.command)}`,
+      );
     }
   });
 

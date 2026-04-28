@@ -1,8 +1,7 @@
 /**
- * Bash command safety classification for advisor mode.
- * Adapted from plan-mode extension utils.
- * A command is allowed only if it matches at least one safe pattern
- * AND does not match any destructive pattern.
+ * Bash command classification used by pi-advisor.
+ * Commands are considered read-only only if they match a safe pattern
+ * and do not match any destructive pattern.
  */
 
 // Destructive commands blocked in advisor mode
@@ -96,8 +95,14 @@ const SAFE_PATTERNS = [
 	/^\s*eza\b/,
 ];
 
-export function isSafeCommand(command: string): boolean {
+export function isReadOnlyCommand(command: string): boolean {
 	const isDestructive = DESTRUCTIVE_PATTERNS.some((p) => p.test(command));
 	const isSafe = SAFE_PATTERNS.some((p) => p.test(command));
 	return !isDestructive && isSafe;
 }
+
+export function requiresApprovalForCommand(command: string): boolean {
+	return !isReadOnlyCommand(command);
+}
+
+export const isSafeCommand = isReadOnlyCommand;
