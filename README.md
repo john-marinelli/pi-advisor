@@ -1,4 +1,4 @@
-# subdude - The pi Extension for a Slower Agent Experience
+# subdude - pi Extension for a Slower Agent Experience
 
 A [pi-coding-agent](https://github.com/badlogic/pi-mono) extension that provides a more subdued agent experience (haha). It comes with two modes, advisor and agent. In advisor mode, pi is restricted to read-only actions, helping with exploration and explanation, and can only read and edit SUBDUDE.md. In agent mode, normal functionality is restored, but all actions that aren't already available in advisor mode require approval.
 
